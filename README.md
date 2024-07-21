@@ -7,7 +7,7 @@ En este nuevo proyecto, se demuestra cómo la integración de AWS Glue, PySpark,
 Este proyecto fue desarrollado para satisfacer las necesidades de una empresa ficticia, y la estimación de costos se realizó con base en los requerimientos específicos utilizando AWS Pricing Calculator.
 
 ------------
-![](Foto - Proyecto S3 EventBridge Glue.jpeg)
+![Proyecto](FotoProyectoS3EventBridgeGlue.jpeg)
 
 
 ## Herramientas y Tecnologías Utilizadas:
