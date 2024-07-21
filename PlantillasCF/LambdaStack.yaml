@@ -1,0 +1,84 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Stack para crear una función Lambda que puede publicar en un tópico SNS específico.
+
+Parameters:
+  ARNTopicSNS:
+    Type: String
+    Description: ARN del tema que accionará la función lambda
+  LambdaRegion:
+    Type: String
+    Description: Región en la que se desplegará la función Lambda
+
+Resources:
+  # Creación del rol de ejecución para la función Lambda
+  MyLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      Policies:
+        - PolicyName: Lambda-SNSPublishPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: sns:Publish
+                Resource: !Ref ARNTopicSNS
+
+  # Creación de la función Lambda
+  MyLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Environment:
+        Variables:
+          ARNTopicSNS: !Ref ARNTopicSNS
+          LambdaRegion: !Ref AWS::Region
+      Code:
+        ZipFile: |
+          import os
+          import json
+          import boto3
+
+          def lambda_handler(event, context):
+              # Inicializar el cliente de SNS
+              sns_client = boto3.client('sns')
+
+              # Obtener el TopicArn desde las variables de entorno
+              topic_arn = os.environ['ARNTopicSNS']
+              
+              # Extraer la información del evento
+              bucket_name = event['Records'][0]['s3']['bucket']['name']
+              object_key = event['Records'][0]['s3']['object']['key']
+              
+              # Construir el mensaje
+              cuerpo = f"Se ha cargado un nuevo objeto en el bucket: {bucket_name}. Nombre del objeto: {object_key}"
+              
+              # Publicar el mensaje en el tópico SNS
+              sns_client.publish(
+                  TopicArn=topic_arn,
+                  Subject='Notificación de carga de datos',
+                  Message=cuerpo
+              )
+              
+              return {
+                  'statusCode': 200,
+                  'body': json.dumps('Notificación enviada con éxito.')
+              }
+
+      Handler: index.lambda_handler
+      Role: !GetAtt MyLambdaExecutionRole.Arn
+      Runtime: python3.8
+      Timeout: 120
+
+
+Outputs:
+  # Salida con el nombre de la función Lambda
+  MyLambdaFunctionName:
+    Description: Nombre de la función Lambda
+    Value: !Ref MyLambdaFunction

@@ -1,0 +1,76 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Plantilla principal para desplegar stack anidado de Lambda, SNS y reglas de EventBridge
+
+Parameters:
+  S3BucketName:
+    Type: String
+    Description: Nombre del bucket S3.
+    Default: "NombreBucket"
+  
+  GlueWorkflowName:
+    Type: String
+    Description: Nombre del Workflow de Glue existente.
+    Default: "NombreWorkFlow"
+
+  RegionName:
+    Type: String
+    Description: Region en donde desplegar la funcion Lambda (Todos los servicios deben estar en la misma region).
+    Default: "NombreRegion"
+
+Resources:
+  # Despliegue del stack SNS
+  SNSStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: 'URL DE LA PLANTILLA Stack'
+
+  # Despliegue del stack Lambda, dependiente del SNSStack
+  LambdaStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: 'URL DE LA PLANTILLA LambdaStack'
+      Parameters:
+        ARNTopicSNS: !GetAtt SNSStack.Outputs.SNSTopicARN
+        LambdaRegion: us-east-1
+    DependsOn: SNSStack
+
+  # Despliegue del stack de reglas EventBridge para Glue
+  GlueEventBridgeStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: 'URL DE LA PLANTILLA GlueEventBridgeStack'
+      Parameters:  
+        S3BucketName: !Ref S3BucketName
+        GlueWorkflowName: !Ref GlueWorkflowName
+
+  # Despliegue del stack de reglas EventBridge para Lambda, dependiente del LambdaStack
+  LambdaEventBridgeStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: 'URL DE LA PLANTILLA LambdaEventBridgeStack'
+      Parameters:
+        BucketName: !Ref S3BucketName
+        LambdaFunctionName: !GetAtt LambdaStack.Outputs.MyLambdaFunctionName
+    DependsOn: 
+      - LambdaStack
+
+Outputs:
+  # Salida con el ARN del tema SNS
+  TopicArn:
+    Description: "ARN del Tema SNS"
+    Value: !GetAtt SNSStack.Outputs.SNSTopicARN
+
+  # Salida con el nombre de la función Lambda
+  LambdaFunctionName:
+    Description: "Nombre de la Función Lambda"
+    Value: !GetAtt LambdaStack.Outputs.MyLambdaFunctionName
+
+  # Salida con el ARN de la regla de EventBridge para Glue
+  GlueEventBridgeRuleARN:
+    Description: "ARN de la regla de EventBridge para Glue"
+    Value: !GetAtt GlueEventBridgeStack.Outputs.EventBridgeRuleARN
+
+  # Salida con el ARN de la regla de EventBridge para Lambda
+  LambdaEventBridgeRuleARN:
+    Description: "ARN de la regla de EventBridge para Lambda"
+    Value: !GetAtt LambdaEventBridgeStack.Outputs.RuleARN

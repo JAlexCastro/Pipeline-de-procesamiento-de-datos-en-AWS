@@ -1,0 +1,59 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Plantilla para crear una regla de EventBridge que activa un Workflow de Glue cuando se carga un objeto en una ruta específica de S3.
+
+Parameters:
+  S3BucketName:
+    Type: String
+    Description: Nombre del bucket S3.
+    Default: "data-clientes541"
+  
+  GlueWorkflowName:
+    Type: String
+    Description: Nombre del Workflow de Glue existente.
+    Default: "wf_procesamiento_datos_clientes"
+
+Resources:
+  # Rol IAM para EventBridge con permisos para notificar eventos de Glue
+  EventBridgeGlueInvokeRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: NotifyGlueEventPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: glue:notifyEvent
+                Resource: !Sub arn:aws:glue:${AWS::Region}:${AWS::AccountId}:workflow/${GlueWorkflowName}
+
+  # Regla de EventBridge que se activa en la creación de un objeto en S3 en la ruta especificada
+  S3EventRule:
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: Regla para notificar un evento de Glue en la creación de un objeto en S3
+      EventPattern:
+        source:
+          - aws.s3
+        detail-type:
+          - Object Created
+        detail:
+          bucket:
+            name:
+              - !Ref S3BucketName
+      Targets:
+        - Arn: !Sub arn:aws:glue:${AWS::Region}:${AWS::AccountId}:workflow/${GlueWorkflowName}
+          Id: GlueWorkflowTarget
+          RoleArn: !GetAtt EventBridgeGlueInvokeRole.Arn
+
+Outputs:
+  EventBridgeRuleARN:
+    Description: ARN de la regla de EventBridge
+    Value: !Ref S3EventRule

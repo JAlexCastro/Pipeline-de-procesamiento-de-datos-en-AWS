@@ -1,0 +1,48 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: "Plantilla para crear una regla de EventBridge que activa una función Lambda existente en la creación de un objeto en S3."
+
+Parameters:
+  BucketName:
+    Description: "Nombre de bucket S3 existente"
+    Type: String
+
+  LambdaFunctionName:
+    Description: "Nombre de la función Lambda existente"
+    Type: String
+
+Resources:
+  # Creación de la regla de EventBridge para activar la función Lambda
+  S3EventBridgeRule:
+    Type: AWS::Events::Rule
+    Properties: 
+      Description: "Regla para activar la función Lambda en la creación de un objeto en S3"
+      EventPattern: 
+        source: 
+          - "aws.s3"
+        detail-type: 
+          - "Object Created"
+        detail:
+          bucket:
+            name:
+              - !Ref BucketName
+      State: "ENABLED"
+      Targets: 
+        - Arn: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${LambdaFunctionName}"
+          Id: "TargetFunctionV1"
+
+  # Permisos para que EventBridge invoque la función Lambda
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: "lambda:InvokeFunction"
+      FunctionName: !Sub "${LambdaFunctionName}"
+      Principal: "events.amazonaws.com"
+      SourceArn: !GetAtt 
+        - S3EventBridgeRule
+        - Arn
+
+Outputs:
+  # Salida con el ARN de la regla de EventBridge
+  RuleARN:
+    Description: "ARN de la regla de EventBridge"
+    Value: !GetAtt S3EventBridgeRule.Arn
