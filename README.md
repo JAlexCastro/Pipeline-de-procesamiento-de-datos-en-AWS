@@ -36,7 +36,7 @@ Este proyecto fue desarrollado para satisfacer las necesidades de una empresa fi
 
 Para ajustar el presupuesto a los requerimientos específicos de la empresa ficticia, se realizó una estimación de costos utilizando AWS Pricing Calculator:
 
-## Obten este proyecto clonandolo el repositorio:
+## Obten este proyecto clonando el repositorio:
 
 1. Navega hasta el directorio donde quieres clonar el repositorio usando el comando cd en la terminal.
 2. Usa el comando git clone, como:
